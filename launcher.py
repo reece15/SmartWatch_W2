@@ -105,6 +105,12 @@ class MyWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 if __name__ == "__main__":
     import sys
+    import os
+
+    if not os.path.exists("./output_bmp"):
+        os.mkdir("./output_bmp")
+    if not os.path.exists("./output_ob"):
+        os.mkdir("./output_ob")
 
     app = QtWidgets.QApplication(sys.argv)
     myshow = MyWindow()
