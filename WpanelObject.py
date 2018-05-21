@@ -16,7 +16,12 @@ class WpanelObject(object):
         self.data_len = data_len
         self.header = header
 
+        self.A = True
+
         self.un_use = data[width * height * 2:]
+
+        if not any(self.un_use):
+            self.A = False
 
     def __len__(self):
         return len(self.data)
@@ -37,15 +42,34 @@ class WpanelObject(object):
         }, indent=4)
 
     def gen_rgb(self):
-        image = Image.new('RGB', (self.width, self.height))
+
+        image = Image.new('RGBA', (self.width, self.height))
         index = 0
+        cnt = 0
+        print(self.un_use)
+        point = self.width * self.height * 2
+
         for y in range(self.height):
             for x in range(self.width):
+                d = self.data[index: index + 2]
+                r, g, b = self.rgb565to888(d)
 
-                image.putpixel((x, y), self.rgb565to888(self.data[index, index+2]))
+                a = self.data[point+cnt]
+                if not self.A:
+                    a = 255
+
+                image.putpixel((x, y), (r, g, b, a))
                 index += 2
+                cnt += 1
+
+        self.image = image
 
         return image
+
+    def save(self, file):
+        if not hasattr(self, "image"):
+            self.image = self.gen_rgb()
+        self.image.save(file, "png")
 
     @staticmethod
     def rgb565to888(pixel):

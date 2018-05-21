@@ -4,6 +4,8 @@ from PIL import Image
 import struct
 from WpanelObject import WpanelObject
 import config
+import os
+
 
 success_msg = u"""
 转换完成!
@@ -25,8 +27,8 @@ def loads(ob_file):
 
         fmt = "{}B".format(width*height*3)
 
-        assert width == width2
-        assert height == height2
+        #assert width == width2
+        #assert height == height2
         data = struct.unpack_from(fmt, buf, config.POINT_DATA)
 
         wpanel = WpanelObject(val="", width=width, height=height, data=data, file=ob_file, data_len=data_len, header=buf[:0x38])
@@ -34,26 +36,24 @@ def loads(ob_file):
     return wpanel
 
 
-def trans(base, ob, file):
+def trans(base, ob, file, A=False):
 
     if not os.path.exists(file):
-        print("文件 {} 不存在".format(file))
-        sys.exit(0)
+        return None, "文件 {} 不存在".format(file)
 
     if not os.path.isfile(file):
-        print("{} 不是文件".format(file))
-        sys.exit(0)
+        return None, "{} 不是文件".format(file)
 
     im = Image.open(file)
 
+
     w,h = im.size
     if h != ob.height:
-        print(u"图片高度不一致! 需要高度{m}, 待转换图片{n}".format(m=ob.height,n=h))
-        sys.exit(0)
+        return None, u"图片高度不一致! 需要高度{m}, 待转换图片{n}".format(m=ob.height,n=h)
 
     if w != ob.width:
-        print(u"图片宽度不一致! 需要宽度{m}, 待转换图片{n}".format(m=ob.width,n=w))
-        sys.exit(0)
+        msg = u"图片宽度不一致! 需要宽度{m}, 待转换图片{n}".format(m=ob.width,n=w)
+        return None, msg
 
 
     with open(base, "wb") as f:
@@ -61,17 +61,20 @@ def trans(base, ob, file):
         f.write(ob.header)
         # f.write(struct.pack('{}B'.format(len(ob.header)), *ob.header))
 
+        un_use = []
+        for i in range(h):
+            for j in range(w):
 
-        im = im.load()
-        for i in range(w):
-            for j in range(h):
-                assert len(im[i,j])==3
-                for k in WpanelObject.rgb888to565(pixel=im[j, i]):
+                pixel = im.getpixel((j, i))
+                for k in WpanelObject.rgb888to565(pixel=pixel):
                     f.write(struct.pack('B', k))
-        f.write(struct.pack('{}B'.format(len(ob.un_use)), *ob.un_use))
 
-        print(success_msg)
-    return base
+                un_use.append(pixel[3])
+
+
+        f.write(struct.pack('{}B'.format(len(un_use)), *un_use))
+
+    return base, success_msg
 
 
 def decode_ob(path):
@@ -88,8 +91,8 @@ def decode_ob(path):
 
         fmt = "{}B".format(width*height*3)
 
-        assert width == width2
-        assert height == height2
+        #assert width == width2
+        #assert height == height2
 
         image = Image.new('RGB', (width, height))
         data = struct.unpack_from(fmt, buf, config.POINT_DATA)
@@ -148,5 +151,8 @@ if __name__ == "__main__":
         sys.exit(0)
 
     ob = loads(p)
-    res = trans(base, ob, file)
-    decode_ob(res).show()
+    res, msg = trans(base, ob, file)
+    if res:
+        decode_ob(res).show()
+    else:
+        print(msg)
